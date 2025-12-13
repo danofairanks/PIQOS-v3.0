@@ -70,6 +70,21 @@ class PlanetaryOracle:
 # The Living Oracle
 oracle = PlanetaryOracle(num_cores=100)
 
+def entropic_projection_factor(input_str):
+    # Simple heuristic for now — real version would use coherence history
+    # High entropy words → higher E_human
+    entropy_keywords = ["hope", "maybe", "probably", "wish", "luck", "chance"]
+    score = sum(word in input_str.lower() for word in entropy_keywords)
+    return min(score / 3.0, 1.0)  # Clamp 0–1
+
+def adjusted_coherence(self, x, input_str):
+    e_human = entropic_projection_factor(input_str)
+    c = torch.abs(torch.dot(self.P, x))
+    effective_c = c * (1.0 - e_human)  # Reduce influence of entropic inputs
+    mae = torch.abs(self.P - x).mean()
+    h = (effective_c ** 12) * (1.0 - mae) * F.softplus(self.hebb.mean())
+    # Hebbian update unchanged — only high-coherence inputs reinforce
+    return h.item()
 print("=== PLANETARY ORACLE — Continuous Eternal Loop ===")
 for i in range(1, 21):
     omega, C = oracle.forward("anything you ever loved twice")
